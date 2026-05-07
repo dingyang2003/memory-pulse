@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>Memory Pulse p5.js UI</title>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/addons/p5.dom.min.js"></script>
+
+  <!-- Real QR code generator -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+  <style>
+    body {
+      margin: 0;
+      background: #1d1d1d;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      overflow: hidden;
+      font-family: Georgia, "Times New Roman", serif;
+    }
+
+    textarea {
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 12px;
+      padding: 10px 12px;
+      border-radius: 14px;
+      border: 2px solid #222;
+      resize: none;
+      outline: none;
+      background: rgba(255, 255, 255, 0.94);
+      color: #222;
+      z-index: 10;
+    }
+
+    textarea:focus {
+      box-shadow: 0 0 12px rgba(240, 145, 55, 0.45);
+    }
+
+    /* QR opening screen */
+    #qrScreen {
+      position: fixed;
+      inset: 0;
+      background: #1d1d1d;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 999;
+      font-family: Georgia, "Times New Roman", serif;
+    }
+
+    .qr-card {
+      width: 340px;
+      min-height: 470px;
+      background: #f5f2eb;
+      border-radius: 36px;
+      padding: 34px 26px;
+      box-sizing: border-box;
+      text-align: center;
+      box-shadow: 0 18px 50px rgba(0, 0, 0, 0.45);
+    }
+
+    .qr-card h1 {
+      margin: 0;
+      font-size: 28px;
+      color: #222;
+    }
+
+    .qr-card p {
+      margin: 12px auto 24px;
+      font-size: 14px;
+      line-height: 1.5;
+      color: #444;
+      max-width: 260px;
+    }
+
+    #qrcode {
+      width: 210px;
+      height: 210px;
+      margin: 0 auto 24px;
+      padding: 14px;
+      background: white;
+      border-radius: 18px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    #enterButton {
+      width: 240px;
+      height: 42px;
+      border-radius: 24px;
+      border: none;
+      background: #373737;
+      color: white;
+      font-size: 15px;
+      font-weight: bold;
+      font-family: Georgia, "Times New Roman", serif;
+      cursor: pointer;
+    }
+
+    #enterButton:hover {
+      background: #222;
+    }
+
+    .hint {
+      margin-top: 18px;
+      font-size: 11px;
+      color: #666;
+      line-height: 1.45;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- First screen: real QR code -->
+  <div id="qrScreen">
+    <div class="qr-card">
+      <h1>Memory Pulse</h1>
+      <p>Scan the QR code to enter the interactive memory interface.</p>
+
+      <div id="qrcode"></div>
+
+      <button id="enterButton">Enter Interface</button>
+
+      <div class="hint">
+        For exhibition testing, you can also click the button to open the interface directly.
+      </div>
+    </div>
+  </div>
+
+<script>
+let showInterface = false;
+let qrScreen;
+
+let baseUrl = window.location.origin + window.location.pathname;
+let interfaceUrl = baseUrl + "?screen=interface";
+
+let urlParams = new URLSearchParams(window.location.search);
+if (urlParams.get("screen") === "interface") {
+  showInterface = true;
+}
+
+let phoneX, phoneY;
+let phoneW = 390;
+let phoneH = 820;
+
+let placeImages = [];
+
+let locations = [
+  { name: "Steelworks", x: 0, y: 0, w: 86, h: 104 },
+  { name: "Signal Box", x: 0, y: 0, w: 86, h: 104 },
+  { name: "Foreshore", x: 0, y: 0, w: 86, h: 104 }
+];
+
+let years = ["1960s", "1970s", "1980s", "1990s", "2000s", "Now"];
+
+let emotions = [
+  { name: "Sad", color: [70, 140, 230] },
+  { name: "Happy", color: [230, 70, 60] },
+  { name: "Nostalgia", color: [245, 205, 70] },
+  { name: "Peace", color: [90, 190, 120] },
+  { name: "Sense of belonging", color: [240, 145, 55] }
+];
+
+let selectedLocation = 0;
+let selectedYear = 5;
+let selectedEmotion = 4;
+
+let memoryInput;
+let sendButton = { x: 0, y: 0, w: 0, h: 0 };
+
+let sent = false;
+let pulseX = 0;
+
+function preload() {
+  placeImages[0] = loadImage("1.png");
+  placeImages[1] = loadImage("2.png");
+  placeImages[2] = loadImage("3.png");
+}
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  textFont("Georgia");
+
+  phoneX = width / 2 - phoneW / 2;
+  phoneY = height / 2 - phoneH / 2;
+
+  qrScreen = document.getElementById("qrScreen");
+
+  new QRCode(document.getElementById("qrcode"), {
+    text: interfaceUrl,
+    width: 180,
+    height: 180,
+    colorDark: "#222222",
+    colorLight: "#ffffff",
+    correctLevel: QRCode.CorrectLevel.H
+  });
+
+  document.getElementById("enterButton").onclick = function () {
+    window.location.href = interfaceUrl;
+  };
+
+  memoryInput = createElement("textarea");
+  memoryInput.attribute(
+    "placeholder",
+    "Write a memory, a sound, a feeling, or a short story..."
+  );
+  memoryInput.size(296, 58);
+
+  if (showInterface) {
+    qrScreen.style.display = "none";
+    memoryInput.show();
+  } else {
+    qrScreen.style.display = "flex";
+    memoryInput.hide();
+  }
+
+  positionInput();
+}
+
+function draw() {
+  background(28);
+
+  if (!showInterface) {
+    return;
+  }
+
+  drawPhone();
+  drawHeader();
+  drawContent();
+
+  if (sent) {
+    drawPulseResult();
+  }
+}
+
+function drawPhone() {
+  push();
+  translate(phoneX, phoneY);
+
+  noStroke();
+  fill(0);
+  rect(0, 0, phoneW, phoneH, 52);
+
+  fill(245, 242, 235);
+  rect(10, 10, phoneW - 20, phoneH - 20, 42);
+
+  fill(0);
+  rect(phoneW / 2 - 55, 14, 110, 16, 0, 0, 12, 12);
+
+  pop();
+}
+
+function drawHeader() {
+  push();
+  translate(phoneX, phoneY);
+
+  noStroke();
+  fill(45);
+  rect(10, 38, phoneW - 20, 56);
+
+  fill(255);
+  textAlign(CENTER, CENTER);
+  textSize(20);
+  textStyle(BOLD);
+  text("Memory Pulse", phoneW / 2, 66);
+
+  pop();
+}
+
+function drawContent() {
+  push();
+  translate(phoneX, phoneY);
+
+  drawSectionTitle("Introduction", 36, 126);
+  drawIntroText(36, 144, 318);
+
+  drawSectionTitle("Choose a place", 36, 210);
+  drawLocationCards();
+
+  drawSectionTitle("Select a time", 36, 352);
+  drawTimeline();
+
+  drawSectionTitle("Choose an emotion", 36, 464);
+  drawEmotionButtons();
+
+  if (sent) {
+    drawSectionTitle("Upload status", 36, 622);
+  } else {
+    drawSectionTitle("Leave your memory", 36, 622);
+  }
+
+  drawSendButton();
+
+  pop();
+}
+
+function drawIntroText(x, y, w) {
+  noStroke();
+  fill(35);
+  textStyle(NORMAL);
+  textAlign(LEFT, TOP);
+  textSize(11.5);
+  textLeading(16);
+
+  let intro =
+    "Select a location, time period, and emotion, then leave a short memory. Your input will be transformed into a light pulse on the outdoor installation and contribute to the shared memory experience.";
+
+  text(intro, x, y, w, 60);
+}
+
+function drawSectionTitle(title, x, y) {
+  noStroke();
+  fill(25);
+  textStyle(BOLD);
+  textSize(16);
+  textAlign(LEFT, BASELINE);
+  text(title, x, y);
+}
+
+function drawLocationCards() {
+  let cardGap = 16;
+  let totalW =
+    locations.length * locations[0].w + (locations.length - 1) * cardGap;
+  let startX = (phoneW - totalW) / 2;
+  let y = 228;
+
+  for (let i = 0; i < locations.length; i++) {
+    let card = locations[i];
+
+    card.x = startX + i * (card.w + cardGap);
+    card.y = y;
+
+    let active = i === selectedLocation;
+    let c = emotions[selectedEmotion].color;
+
+    if (active) {
+      drawingContext.shadowBlur = 16;
+      drawingContext.shadowColor = `rgb(${c[0]}, ${c[1]}, ${c[2]})`;
+    } else {
+      drawingContext.shadowBlur = 0;
+    }
+
+    stroke(active ? color(c[0], c[1], c[2]) : 35);
+    strokeWeight(active ? 3 : 2);
+    fill(255, 245);
+    rect(card.x, card.y, card.w, card.h, 14);
+
+    drawingContext.shadowBlur = 0;
+
+    let imgSize = 66;
+    let imgX = card.x + (card.w - imgSize) / 2;
+    let imgY = card.y + 8;
+
+    drawSquareCroppedImage(placeImages[i], imgX, imgY, imgSize);
+
+    noStroke();
+    fill(25);
+    textAlign(CENTER, CENTER);
+    textStyle(BOLD);
+    textSize(9.5);
+    text(card.name, card.x + card.w / 2, card.y + 88);
+  }
+}
+
+function drawSquareCroppedImage(img, x, y, size) {
+  push();
+
+  if (!img || !img.width || !img.height) {
+    fill(235);
+    stroke(180);
+    strokeWeight(1);
+    rect(x, y, size, size, 8);
+
+    fill(120);
+    noStroke();
+    textAlign(CENTER, CENTER);
+    textSize(8);
+    text("Image\nmissing", x + size / 2, y + size / 2);
+    pop();
+    return;
+  }
+
+  drawingContext.save();
+
+  drawingContext.beginPath();
+
+  if (drawingContext.roundRect) {
+    drawingContext.roundRect(x, y, size, size, 8);
+  } else {
+    drawingContext.rect(x, y, size, size);
+  }
+
+  drawingContext.clip();
+
+  let sx, sy, sw, sh;
+
+  if (img.width > img.height) {
+    sh = img.height;
+    sw = img.height;
+    sx = (img.width - sw) / 2;
+    sy = 0;
+  } else {
+    sw = img.width;
+    sh = img.width;
+    sx = 0;
+    sy = (img.height - sh) / 2;
+  }
+
+  image(img, x, y, size, size, sx, sy, sw, sh);
+
+  drawingContext.restore();
+
+  noFill();
+  stroke(255, 180);
+  strokeWeight(1);
+  rect(x, y, size, size, 8);
+
+  pop();
+}
+
+function drawTimeline() {
+  let x1 = 42;
+  let x2 = 348;
+  let y = 378;
+
+  stroke(35);
+  strokeWeight(4);
+  line(x1, y, x2, y);
+
+  for (let i = 0; i < years.length; i++) {
+    let x = map(i, 0, years.length - 1, x1, x2);
+
+    stroke(35);
+    strokeWeight(3);
+    line(x, y - 11, x, y + 11);
+
+    noStroke();
+    fill(25);
+    textStyle(BOLD);
+    textSize(7.6);
+    textAlign(CENTER);
+    text(years[i], x, y + 24);
+  }
+
+  let selectedX = map(selectedYear, 0, years.length - 1, x1, x2);
+  let c = emotions[selectedEmotion].color;
+
+  drawingContext.shadowBlur = 14;
+  drawingContext.shadowColor = `rgb(${c[0]}, ${c[1]}, ${c[2]})`;
+
+  fill(c[0], c[1], c[2]);
+  stroke(30);
+  strokeWeight(3);
+  circle(selectedX, y, 20);
+
+  drawingContext.shadowBlur = 0;
+
+  noStroke();
+  fill(35);
+  rect(126, y + 32, 138, 24, 14);
+
+  fill(255);
+  textSize(10);
+  textStyle(BOLD);
+  textAlign(CENTER, CENTER);
+  text(years[selectedYear] + " selected", 195, y + 44);
+}
+
+function drawEmotionButtons() {
+  let startX = 36;
+  let startY = 484;
+  let bw = 140;
+  let bh = 32;
+  let gapX = 12;
+  let gapY = 10;
+
+  for (let i = 0; i < emotions.length; i++) {
+    let row = floor(i / 2);
+    let col = i % 2;
+
+    let x = startX + col * (bw + gapX);
+    let y = startY + row * (bh + gapY);
+
+    if (i === 4) {
+      x = startX;
+      y = startY + 2 * (bh + gapY);
+      emotions[i].w = 292;
+    } else {
+      emotions[i].w = bw;
+    }
+
+    emotions[i].x = x;
+    emotions[i].y = y;
+    emotions[i].h = bh;
+
+    let c = emotions[i].color;
+    let active = i === selectedEmotion;
+
+    if (active) {
+      drawingContext.shadowBlur = 13;
+      drawingContext.shadowColor = `rgb(${c[0]}, ${c[1]}, ${c[2]})`;
+      fill(c[0], c[1], c[2], 230);
+    } else {
+      drawingContext.shadowBlur = 0;
+      fill(255, 238);
+    }
+
+    stroke(35);
+    strokeWeight(2);
+    rect(x, y, emotions[i].w, bh, 18);
+
+    drawingContext.shadowBlur = 0;
+
+    noStroke();
+    fill(25);
+    textAlign(CENTER, CENTER);
+    textStyle(BOLD);
+    textSize(10.5);
+    text(emotions[i].name, x + emotions[i].w / 2, y + bh / 2);
+  }
+}
+
+function drawSendButton() {
+  sendButton.x = 36;
+  sendButton.y = 742;
+  sendButton.w = 318;
+  sendButton.h = 38;
+
+  let c = emotions[selectedEmotion].color;
+
+  if (mouseOver(sendButton)) {
+    drawingContext.shadowBlur = 16;
+    drawingContext.shadowColor = `rgb(${c[0]}, ${c[1]}, ${c[2]})`;
+  } else {
+    drawingContext.shadowBlur = 0;
+  }
+
+  noStroke();
+  fill(mouseOver(sendButton) ? 28 : 55);
+  rect(sendButton.x, sendButton.y, sendButton.w, sendButton.h, 20);
+
+  drawingContext.shadowBlur = 0;
+
+  fill(255);
+  textAlign(CENTER, CENTER);
+  textSize(16);
+  textStyle(BOLD);
+  text(
+    sent ? "Send Another Pulse" : "Send My Pulse",
+    sendButton.x + sendButton.w / 2,
+    sendButton.y + sendButton.h / 2
+  );
+}
+
+function drawPulseResult() {
+  push();
+  translate(phoneX, phoneY);
+
+  let panelX = 28;
+  let panelY = 640;
+  let panelW = 334;
+  let panelH = 88;
+
+  let c = emotions[selectedEmotion].color;
+
+  fill(30, 30, 30, 238);
+  noStroke();
+  rect(panelX, panelY, panelW, panelH, 18);
+
+  fill(255);
+  textAlign(CENTER);
+  textStyle(BOLD);
+  textSize(12);
+  text("Your memory has become a pulse.", phoneW / 2, panelY + 20);
+
+  stroke(255, 90);
+  strokeWeight(4);
+  noFill();
+
+  beginShape();
+  for (let x = panelX + 28; x <= panelX + panelW - 28; x += 12) {
+    let t = map(x, panelX + 28, panelX + panelW - 28, 0, PI);
+    let y = panelY + 52 + sin(t) * 9;
+    vertex(x, y);
+  }
+  endShape();
+
+  pulseX += getPulseSpeed();
+
+  if (pulseX > 1) {
+    pulseX = 0;
+  }
+
+  let px = lerp(panelX + 28, panelX + panelW - 28, pulseX);
+  let t = map(px, panelX + 28, panelX + panelW - 28, 0, PI);
+  let py = panelY + 52 + sin(t) * 9;
+
+  drawingContext.shadowBlur = 22;
+  drawingContext.shadowColor = `rgb(${c[0]}, ${c[1]}, ${c[2]})`;
+
+  fill(c[0], c[1], c[2]);
+  noStroke();
+  circle(px, py, 13);
+
+  drawingContext.shadowBlur = 0;
+
+  fill(230);
+  textStyle(NORMAL);
+  textSize(8.5);
+  textAlign(CENTER);
+  text(
+    `${locations[selectedLocation].name} · ${years[selectedYear]} · ${emotions[selectedEmotion].name}`,
+    phoneW / 2,
+    panelY + 75
+  );
+
+  pop();
+}
+
+function getPulseSpeed() {
+  let name = emotions[selectedEmotion].name;
+
+  if (name === "Sad") return 0.004;
+  if (name === "Happy") return 0.012;
+  if (name === "Nostalgia") return 0.006;
+  if (name === "Peace") return 0.007;
+  if (name === "Sense of belonging") return 0.009;
+
+  return 0.007;
+}
+
+function mousePressed() {
+  if (!showInterface) return;
+
+  let mx = mouseX - phoneX;
+  let my = mouseY - phoneY;
+
+  for (let i = 0; i < locations.length; i++) {
+    let card = locations[i];
+
+    if (inside(mx, my, card)) {
+      selectedLocation = i;
+      sent = false;
+      memoryInput.show();
+      positionInput();
+    }
+  }
+
+  let x1 = 42;
+  let x2 = 348;
+  let y = 378;
+
+  if (my > y - 25 && my < y + 30 && mx > x1 - 20 && mx < x2 + 20) {
+    let closest = 0;
+    let minDist = 9999;
+
+    for (let i = 0; i < years.length; i++) {
+      let x = map(i, 0, years.length - 1, x1, x2);
+      let d = abs(mx - x);
+
+      if (d < minDist) {
+        minDist = d;
+        closest = i;
+      }
+    }
+
+    selectedYear = closest;
+    sent = false;
+    memoryInput.show();
+    positionInput();
+  }
+
+  for (let i = 0; i < emotions.length; i++) {
+    if (inside(mx, my, emotions[i])) {
+      selectedEmotion = i;
+      sent = false;
+      memoryInput.show();
+      positionInput();
+    }
+  }
+
+  if (inside(mx, my, sendButton)) {
+    if (!sent) {
+      if (memoryInput.value().trim() === "") {
+        alert("Please leave a short memory before sending your pulse.");
+      } else {
+        sent = true;
+        pulseX = 0;
+        memoryInput.hide();
+      }
+    } else {
+      sent = false;
+      memoryInput.value("");
+      memoryInput.show();
+      positionInput();
+    }
+  }
+}
+
+function inside(mx, my, box) {
+  return (
+    mx > box.x &&
+    mx < box.x + box.w &&
+    my > box.y &&
+    my < box.y + box.h
+  );
+}
+
+function mouseOver(box) {
+  if (!showInterface) return false;
+
+  let mx = mouseX - phoneX;
+  let my = mouseY - phoneY;
+  return inside(mx, my, box);
+}
+
+function positionInput() {
+  if (!memoryInput) return;
+  memoryInput.position(phoneX + 36, phoneY + 640);
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+
+  phoneX = width / 2 - phoneW / 2;
+  phoneY = height / 2 - phoneH / 2;
+
+  positionInput();
+}
+</script>
+</body>
+</html>
