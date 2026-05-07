@@ -9,9 +9,6 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/addons/p5.dom.min.js"></script>
 
-  <!-- Real QR code generator -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-
   <style>
     body {
       margin: 0;
@@ -34,118 +31,16 @@
       outline: none;
       background: rgba(255, 255, 255, 0.94);
       color: #222;
-      z-index: 10;
     }
 
     textarea:focus {
       box-shadow: 0 0 12px rgba(240, 145, 55, 0.45);
     }
-
-    /* QR opening screen */
-    #qrScreen {
-      position: fixed;
-      inset: 0;
-      background: #1d1d1d;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      z-index: 999;
-      font-family: Georgia, "Times New Roman", serif;
-    }
-
-    .qr-card {
-      width: 340px;
-      min-height: 470px;
-      background: #f5f2eb;
-      border-radius: 36px;
-      padding: 34px 26px;
-      box-sizing: border-box;
-      text-align: center;
-      box-shadow: 0 18px 50px rgba(0, 0, 0, 0.45);
-    }
-
-    .qr-card h1 {
-      margin: 0;
-      font-size: 28px;
-      color: #222;
-    }
-
-    .qr-card p {
-      margin: 12px auto 24px;
-      font-size: 14px;
-      line-height: 1.5;
-      color: #444;
-      max-width: 260px;
-    }
-
-    #qrcode {
-      width: 210px;
-      height: 210px;
-      margin: 0 auto 24px;
-      padding: 14px;
-      background: white;
-      border-radius: 18px;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-    }
-
-    #enterButton {
-      width: 240px;
-      height: 42px;
-      border-radius: 24px;
-      border: none;
-      background: #373737;
-      color: white;
-      font-size: 15px;
-      font-weight: bold;
-      font-family: Georgia, "Times New Roman", serif;
-      cursor: pointer;
-    }
-
-    #enterButton:hover {
-      background: #222;
-    }
-
-    .hint {
-      margin-top: 18px;
-      font-size: 11px;
-      color: #666;
-      line-height: 1.45;
-    }
   </style>
 </head>
 
 <body>
-
-  <!-- First screen: real QR code -->
-  <div id="qrScreen">
-    <div class="qr-card">
-      <h1>Memory Pulse</h1>
-      <p>Scan the QR code to enter the interactive memory interface.</p>
-
-      <div id="qrcode"></div>
-
-      <button id="enterButton">Enter Interface</button>
-
-      <div class="hint">
-        For exhibition testing, you can also click the button to open the interface directly.
-      </div>
-    </div>
-  </div>
-
 <script>
-let showInterface = false;
-let qrScreen;
-
-let baseUrl = window.location.origin + window.location.pathname;
-let interfaceUrl = baseUrl + "?screen=interface";
-
-let urlParams = new URLSearchParams(window.location.search);
-if (urlParams.get("screen") === "interface") {
-  showInterface = true;
-}
-
 let phoneX, phoneY;
 let phoneW = 390;
 let phoneH = 820;
@@ -191,21 +86,6 @@ function setup() {
   phoneX = width / 2 - phoneW / 2;
   phoneY = height / 2 - phoneH / 2;
 
-  qrScreen = document.getElementById("qrScreen");
-
-  new QRCode(document.getElementById("qrcode"), {
-    text: interfaceUrl,
-    width: 180,
-    height: 180,
-    colorDark: "#222222",
-    colorLight: "#ffffff",
-    correctLevel: QRCode.CorrectLevel.H
-  });
-
-  document.getElementById("enterButton").onclick = function () {
-    window.location.href = interfaceUrl;
-  };
-
   memoryInput = createElement("textarea");
   memoryInput.attribute(
     "placeholder",
@@ -213,23 +93,11 @@ function setup() {
   );
   memoryInput.size(296, 58);
 
-  if (showInterface) {
-    qrScreen.style.display = "none";
-    memoryInput.show();
-  } else {
-    qrScreen.style.display = "flex";
-    memoryInput.hide();
-  }
-
   positionInput();
 }
 
 function draw() {
   background(28);
-
-  if (!showInterface) {
-    return;
-  }
 
   drawPhone();
   drawHeader();
@@ -390,13 +258,7 @@ function drawSquareCroppedImage(img, x, y, size) {
   drawingContext.save();
 
   drawingContext.beginPath();
-
-  if (drawingContext.roundRect) {
-    drawingContext.roundRect(x, y, size, size, 8);
-  } else {
-    drawingContext.rect(x, y, size, size);
-  }
-
+  drawingContext.roundRect(x, y, size, size, 8);
   drawingContext.clip();
 
   let sx, sy, sw, sh;
@@ -637,8 +499,6 @@ function getPulseSpeed() {
 }
 
 function mousePressed() {
-  if (!showInterface) return;
-
   let mx = mouseX - phoneX;
   let my = mouseY - phoneY;
 
@@ -714,8 +574,6 @@ function inside(mx, my, box) {
 }
 
 function mouseOver(box) {
-  if (!showInterface) return false;
-
   let mx = mouseX - phoneX;
   let my = mouseY - phoneY;
   return inside(mx, my, box);
